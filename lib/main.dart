@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'screens/connexion_screen.dart';
+import 'services/database_factory.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await configureDatabaseFactory();
   runApp(const MesNotesApp());
 }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -25,7 +26,10 @@ class DatabaseManager {
 
   Future<Database> _open() async {
     final String path =
-        this.path ?? join(await getDatabasesPath(), 'mes_notes.db');
+        this.path ??
+        (kIsWeb
+            ? 'mes_notes_web.db'
+            : join(await getDatabasesPath(), 'mes_notes.db'));
     return openDatabase(path, version: 1, onCreate: _onCreate);
   }
 

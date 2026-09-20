@@ -2,91 +2,104 @@ import 'package:flutter/material.dart';
 
 import '../models/user.dart';
 import '../services/database_manager.dart';
-import 'inscription_screen.dart';
-import 'notes_list_screen.dart';
 
-class ConnexionScreen extends StatefulWidget {
-  const ConnexionScreen({super.key});
+class InscriptionScreen extends StatefulWidget {
+  const InscriptionScreen({super.key});
 
   @override
-  State<ConnexionScreen> createState() => _ConnexionScreenState();
+  State<InscriptionScreen> createState() => _InscriptionScreenState();
 }
 
-class _ConnexionScreenState extends State<ConnexionScreen> {
+class _InscriptionScreenState extends State<InscriptionScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _obscurePassword = true;
-  bool _showError = false;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initialiserUtilisateurDemo();
-  }
+  String? _errorMessage;
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _initialiserUtilisateurDemo() async {
-    try {
-      await DatabaseManager.instance.seedDefaultUserIfEmpty();
-    } catch (_) {}
-  }
-
-  Future<void> _seConnecter() async {
+  Future<void> _creerCompte() async {
     final String username = _usernameController.text.trim();
     final String password = _passwordController.text;
-    if (username.isEmpty || password.isEmpty) {
+    final String confirmation = _confirmPasswordController.text;
+    if (username.isEmpty) {
       setState(() {
-        _showError = true;
+        _errorMessage = 'Veuillez saisir un nom d\'utilisateur.';
+      });
+      return;
+    }
+    if (username.length < 3) {
+      setState(() {
+        _errorMessage =
+            'Le nom d\'utilisateur doit contenir au moins 3 caractères.';
+      });
+      return;
+    }
+    if (password.length < 6) {
+      setState(() {
+        _errorMessage = 'Le mot de passe doit contenir au moins 6 caractères.';
+      });
+      return;
+    }
+    if (password != confirmation) {
+      setState(() {
+        _errorMessage = 'Les mots de passe ne correspondent pas.';
       });
       return;
     }
     setState(() {
       _isLoading = true;
-      _showError = false;
+      _errorMessage = null;
     });
     try {
-      final User? user = await DatabaseManager.instance.authenticate(
+      final User? existant = await DatabaseManager.instance.findUserByUsername(
         username,
-        password,
+      );
+      if (existant != null) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Ce nom d\'utilisateur est déjà utilisé. Veuillez en choisir un autre.';
+        });
+        return;
+      }
+      await DatabaseManager.instance.insertUser(
+        User.sansId(username: username, password: password),
       );
       if (!mounted) {
         return;
       }
-      if (user != null) {
-        setState(() {
-          _isLoading = false;
-        });
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => NotesListScreen(user: user)),
-        );
-      } else {
-        setState(() {
-          _showError = true;
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Compte créé avec succès. Connectez-vous.'),
+        ),
+      );
+      Navigator.of(context).pop();
     } catch (_) {
       if (!mounted) {
         return;
       }
       setState(() {
-        _showError = true;
         _isLoading = false;
+        _errorMessage =
+            'Une erreur est survenue lors de la création du compte.';
       });
     }
-  }
-
-  Future<void> _allerInscription() {
-    return Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const InscriptionScreen()));
   }
 
   @override
@@ -126,7 +139,7 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.edit_note,
+                            Icons.how_to_reg,
                             color: Colors.blue,
                             size: 36,
                           ),
@@ -145,7 +158,7 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
                       const SizedBox(height: 4),
                       Center(
                         child: Text(
-                          'Connectez-vous à votre compte',
+                          'Créez votre compte',
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 14,
@@ -153,14 +166,14 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      if (_showError) ..._construireBandeauErreur(),
+                      if (_errorMessage != null) ..._construireBandeauErreur(),
                       const SizedBox(height: 20),
                       TextField(
                         controller: _usernameController,
                         textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
                           labelText: 'Nom d\'utilisateur',
-                          hintText: 'Entrez votre nom d\'utilisateur',
+                          hintText: 'Choisissez un nom d\'utilisateur',
                           suffixIcon: const Icon(Icons.person_outline),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -171,11 +184,10 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _seConnecter(),
+                        textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
                           labelText: 'Mot de passe',
-                          hintText: 'Entrez votre mot de passe',
+                          hintText: '6 caractères minimum',
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
@@ -191,11 +203,36 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _confirmPasswordController,
+                        obscureText: _obscureConfirmPassword,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _creerCompte(),
+                        decoration: InputDecoration(
+                          labelText: 'Confirmer le mot de passe',
+                          hintText: 'Retapez votre mot de passe',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () => setState(() {
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword;
+                            }),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: _isLoading ? null : _seConnecter,
+                          onPressed: _isLoading ? null : _creerCompte,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
                             foregroundColor: Colors.white,
@@ -208,49 +245,18 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: const <Widget>[
+                              Icon(Icons.person_add, size: 20),
+                              SizedBox(width: 8),
                               Text(
-                                'Connexion',
+                                'Créer mon compte',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(width: 8),
-                              Icon(Icons.arrow_forward, size: 20),
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Flexible(
-                            child: Text(
-                              'Pas encore de compte ?',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: _allerInscription,
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size.square(40),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Créer un compte',
-                              style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -278,8 +284,7 @@ class _ConnexionScreenState extends State<ConnexionScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Nom d\'utilisateur ou mot de passe incorrect. '
-                'Veuillez réessayer.',
+                _errorMessage!,
                 style: TextStyle(color: Colors.red.shade700, fontSize: 13),
               ),
             ),

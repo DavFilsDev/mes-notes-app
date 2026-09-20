@@ -6,9 +6,9 @@ Une application mobile Flutter minimaliste et éco-conçue pour la gestion effic
 
 ## Aperçu des Interfaces
 
-| Connexion | Liste des Notes | Édition de Note | Mon Profil |
-| :---: | :---: | :---: | :---: |
-| ![Connexion](docs/figma-mockups/01_connexion.png) | ![Liste](docs/figma-mockups/02_liste_notes.png) | ![Éditeur](docs/figma-mockups/03_editeur_note.png) | ![Profil](docs/figma-mockups/04_profil_utilisateur.png) |
+| Connexion | Inscription | Liste des Notes | Édition de Note | Mon Profil |
+| :---: | :---: | :---: | :---: | :---: |
+| ![Connexion](docs/figma-mockups/01_connexion.png) | ![Inscription](docs/figma-mockups/02_inscription.png) | ![Liste](docs/figma-mockups/04_liste_notes.png) | ![Éditeur](docs/figma-mockups/03_editeur_note.png) | ![Profil](docs/figma-mockups/05_profil_utilisateur.png) |
 
 ---
 
